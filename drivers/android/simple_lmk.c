@@ -245,8 +245,19 @@ static int simple_lmk_reclaim_thread(void *data)
 	sched_setscheduler_nocheck(current, SCHED_FIFO, &sched_max_rt_prio);
 
 	while (1) {
-		wait_event(oom_waitq, atomic_add_unless(&needs_reclaim, -1, 0));
-		scan_and_kill(MIN_FREE_PAGES);
+		wait_event(oom_waitq, READ_ONCE(needs_reclaim));
+
+		/*
+		 * Kill a batch of processes and wait for their memory to be
+		 * freed. After their memory is freed, sleep for 20 ms to give
+		 * OOM'd allocations a chance to scavenge for the newly-freed
+		 * pages. Rinse and repeat while there are still OOM'd
+		 * allocations.
+		 */
+		do {
+			scan_and_kill(MIN_FREE_PAGES);
+			msleep(20);
+		} while (READ_ONCE(needs_reclaim));
 	}
 
 	return 0;
