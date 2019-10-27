@@ -119,13 +119,13 @@ enum sched_tunable_scaling sysctl_sched_tunable_scaling = SCHED_TUNABLESCALING_L
  *
  * (default: 0.75 msec * (1 + ilog(ncpus)), units: nanoseconds)
  */
-unsigned int sysctl_sched_min_granularity		= 500000ULL;
-unsigned int normalized_sysctl_sched_min_granularity	= 500000ULL;
+unsigned int sysctl_sched_min_granularity		= 750000ULL;
+unsigned int normalized_sysctl_sched_min_granularity	= 750000ULL;
 
 /*
  * This value is kept at sysctl_sched_latency/sysctl_sched_min_granularity
  */
-static unsigned int sched_nr_latency = 6;
+static unsigned int sched_nr_latency = 8;
 
 /*
  * After fork, child runs first. If set to 0 (default) then
@@ -176,7 +176,7 @@ int __weak arch_asym_cpu_priority(int cpu)
  *
  * (default: 5 msec, units: microseconds)
  */
-unsigned int sysctl_sched_cfs_bandwidth_slice		= 4000UL;
+unsigned int sysctl_sched_cfs_bandwidth_slice		= 5000UL;
 #endif
 
 /*
@@ -5831,7 +5831,7 @@ cpu_is_in_target_set(struct task_struct *p, int cpu)
 }
 
 static inline bool
-bias_to_this_cpu(struct task_struct *p, int cpu, struct cpumask *rtg_target)
+bias_to_waker_cpu(struct task_struct *p, int cpu, struct cpumask *rtg_target)
 {
 	bool base_test = cpumask_test_cpu(cpu, &p->cpus_allowed) &&
 			cpu_active(cpu) && task_fits_max(p, cpu) &&
@@ -7375,7 +7375,6 @@ struct find_best_target_env {
 	int placement_boost;
 	bool need_idle;
 	int fastpath;
-	int skip_cpu;
 };
 
 static bool is_packing_eligible(struct task_struct *p, int target_cpu,
@@ -7452,7 +7451,6 @@ enum fastpaths {
 	NONE = 0,
 	SYNC_WAKEUP,
 	PREV_CPU_FASTPATH,
-	MANY_WAKEUP,
 };
 
 static inline int find_best_target(struct task_struct *p, int *backup_cpu,
@@ -7555,9 +7553,6 @@ static inline int find_best_target(struct task_struct *p, int *backup_cpu,
 				continue;
 
 			if (sched_cpu_high_irqload(i))
-				continue;
-
-			if (fbt_env->skip_cpu == i)
 				continue;
 
 			/*
@@ -8151,21 +8146,10 @@ static inline struct cpumask *find_rtg_target(struct task_struct *p)
 
 	return rtg_target;
 }
-
-static inline bool is_many_wakeup(int sibling_count_hint)
-{
-	return sibling_count_hint >= sysctl_sched_many_wakeup_threshold;
-}
-
 #else
 static inline struct cpumask *find_rtg_target(struct task_struct *p)
 {
 	return NULL;
-}
-
-static inline bool is_many_wakeup(int sibling_count_hint)
-{
-	return false;
 }
 #endif
 
@@ -8201,16 +8185,9 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		sync = 0;
 
 	if (sysctl_sched_sync_hint_enable && sync &&
-				bias_to_this_cpu(p, cpu, rtg_target)) {
+				bias_to_waker_cpu(p, cpu, rtg_target)) {
 		target_cpu = cpu;
 		fbt_env.fastpath = SYNC_WAKEUP;
-		goto out;
-	}
-
-	if (is_many_wakeup(sibling_count_hint) && prev_cpu != cpu &&
-				bias_to_this_cpu(p, prev_cpu, rtg_target)) {
-		target_cpu = prev_cpu;
-		fbt_env.fastpath = MANY_WAKEUP;
 		goto out;
 	}
 
@@ -8267,8 +8244,6 @@ static int find_energy_efficient_cpu(struct sched_domain *sd,
 		fbt_env.rtg_target = rtg_target;
 		fbt_env.placement_boost = placement_boost;
 		fbt_env.need_idle = need_idle;
-		fbt_env.skip_cpu = is_many_wakeup(sibling_count_hint) ?
-				   cpu : -1;
 
 		/* Find a cpu with sufficient capacity */
 		target_cpu = find_best_target(p, &eenv->cpu[EAS_CPU_BKP].cpu_id,
@@ -9772,6 +9747,10 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 {
 	unsigned long capacity = arch_scale_cpu_capacity(sd, cpu);
 	struct sched_group *sdg = sd->groups;
+	struct max_cpu_capacity *mcc;
+	unsigned long max_capacity;
+	int max_cap_cpu;
+	unsigned long flags;
 
 	capacity *= arch_scale_max_freq_capacity(sd, cpu);
 	capacity >>= SCHED_CAPACITY_SHIFT;
@@ -9779,6 +9758,26 @@ static void update_cpu_capacity(struct sched_domain *sd, int cpu)
 	capacity = min(capacity, thermal_cap(cpu));
 	cpu_rq(cpu)->cpu_capacity_orig = capacity;
 
+	mcc = &cpu_rq(cpu)->rd->max_cpu_capacity;
+
+	raw_spin_lock_irqsave(&mcc->lock, flags);
+	max_capacity = mcc->val;
+	max_cap_cpu = mcc->cpu;
+
+	if ((max_capacity > capacity && max_cap_cpu == cpu) ||
+	    max_capacity < capacity) {
+		mcc->val = capacity;
+		mcc->cpu = cpu;
+#ifdef CONFIG_SCHED_DEBUG
+		raw_spin_unlock_irqrestore(&mcc->lock, flags);
+		printk_deferred(KERN_INFO "CPU%d: update max cpu_capacity %lu\n",
+				cpu, capacity);
+		goto skip_unlock;
+#endif
+	}
+	raw_spin_unlock_irqrestore(&mcc->lock, flags);
+
+skip_unlock: __attribute__ ((unused));
 	capacity *= scale_rt_capacity(cpu);
 	capacity >>= SCHED_CAPACITY_SHIFT;
 
