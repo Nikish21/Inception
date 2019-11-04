@@ -121,7 +121,7 @@ static unsigned long find_victims(int *vindex, short target_adj)
 		victims[*vindex].size = get_mm_rss(vtsk->mm);
 
 		/* Keep track of the number of pages that have been found */
-		pages_found += varr[*vindex].size;
+		pages_found += victims[*vindex].size;
 
 		/* Make sure there's space left in the victim array */
 		if (++*vindex == MAX_VICTIMS)
@@ -292,12 +292,11 @@ static int simple_lmk_init_set(const char *val, const struct kernel_param *kp)
 	static atomic_t init_done = ATOMIC_INIT(0);
 	struct task_struct *thread;
 
-	if (atomic_cmpxchg(&init_done, 0, 1))
-		return 0;
-
-	thread = kthread_run(simple_lmk_reclaim_thread, NULL, "simple_lmkd");
-	BUG_ON(IS_ERR(thread));
-
+	if (!atomic_cmpxchg(&init_done, 0, 1)) {
+		thread = kthread_run(simple_lmk_reclaim_thread, NULL,
+				     "simple_lmkd");
+		BUG_ON(IS_ERR(thread));
+	}
 	return 0;
 }
 
