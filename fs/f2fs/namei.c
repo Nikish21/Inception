@@ -868,14 +868,15 @@ static int f2fs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		return -EXDEV;
 
 	/*
-	 * old entry and new entry can locate in the same inline
-	 * dentry in inode, when attaching new entry in inline dentry,
-	 * it could force inline dentry conversion, after that,
-	 * old_entry and old_page will point to wrong address, in
-	 * order to avoid this, let's do the check and update here.
+	 * If new_inode is null, the below renaming flow will
+	 * add a link in old_dir which can conver inline_dir.
+	 * After then, if we failed to get the entry due to other
+	 * reasons like ENOMEM, we had to remove the new entry.
+	 * Instead of adding such the error handling routine, let's
+	 * simply convert first here.
 	 */
 	if (old_dir == new_dir && !new_inode) {
-		err = f2fs_convert_inline_dir(old_dir);
+		err = f2fs_try_convert_inline_dir(old_dir, new_dentry);
 		if (err)
 			return err;
 	}
