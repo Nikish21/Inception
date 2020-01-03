@@ -553,8 +553,17 @@ asmlinkage __visible void __init start_kernel(void)
 	page_alloc_init();
 
 	pr_notice("Kernel command line: %s\n", boot_command_line);
-	/* parameters may set static keys */
-	jump_label_init();
+
+	p = strstr(command_line, "androidboot.fpsensor=fpc");
+	if (p) {
+		pr_info("You have fpc scanner\n");
+		fpsensor = 1;//fpc fingerprint
+	} else {
+		pr_info("You have goodix scanner\n");
+		fpsensor = 2;//goodix fingerprint
+	}
+
+	pr_notice("Kernel command line: %s\n", boot_command_line);
 	parse_early_param();
 	after_dashes = parse_args("Booting kernel",
 				  static_command_line, __start___param,
