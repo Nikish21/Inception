@@ -12,9 +12,9 @@ KERN_DTB=$KERNEL_DIR/out/arch/arm64/boot/dts/qcom/trinket.dtb
 BUILD_START=$(date +"%s")
 BASE_VER="Inception"
 KERNEL_VER=2t4
-ANYKERNEL_DIR=/home/dasnikish2109/AnyKernel3
-EXPORT_DIR=/home/dasnikish2109/zips
-file=$PWD/w.sh
+ANYKERNEL_DIR=/home/ubuntu/anykernel
+EXPORT_DIR=/home/ubuntu/zips
+file=$PWD/b.sh
 FINAL_ZIP=$BASE_VER-v$KERNEL_VER.zip
 
 # Release
@@ -37,8 +37,8 @@ export ARCH=arm64
 export SUBARCH=arm64
 export KBUILD_BUILD_USER="Nikish21"
 export KBUILD_BUILD_HOST="ndpc"
-export CROSS_COMPILE=/home/dasnikish2109/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-export KBUILD_COMPILER_STRING=$(/home/dasnikish2109/clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
+export CROSS_COMPILE=/home/ubuntu/aarch64-linux-android-4.9/bin/aarch64-linux-android-
+export KBUILD_COMPILER_STRING=$(/home/ubuntu/proton-clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
 
 #COMPILATION SCRIPTS
 echo -e "${green}"
@@ -66,29 +66,10 @@ echo "          Providing The Inception        "
 echo -e "***********************************************$nocol"
 
 make -j$(nproc --all) O=out ARCH=arm64 \
-			CC="/home/dasnikish2109/clang/bin/clang" \
+			CC="/home/ubuntu/clang/proton-clang/clang" \
 			CLANG_TRIPLE="aarch64-linux-gnu-"
 
 
-modules () {
-
-
-    VENDOR_MODULEDIR=/home/dasnikish2109/AnyKernel3/modules/vendor/lib/modules/
-        for MODULES in $(find "$KERNEL_DIR/out" -name '*.ko'); do
-
-        "$KERNEL_DIR/out/scripts/sign-file" sha512 \
-                "$KERNEL_DIR/out/certs/signing_key.pem" \
-                "$KERNEL_DIR/out/certs/signing_key.x509" \
-                "${MODULES}"
-        case ${MODULES} in
-                */wlan.ko)
-            cp "${MODULES}" "${VENDOR_MODULEDIR}/qca_cld3_wlan.ko" ;;
-        esac
-    done
-    echo -e "\n(i) Done moving modules"
-}
-
-modules
 
 
 
