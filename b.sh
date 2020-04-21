@@ -1,4 +1,4 @@
-q#!/bin/bash
+#!/bin/bash
 #
 
 
@@ -11,7 +11,7 @@ KERN_IMG=$KERNEL_DIR/out/arch/arm64/boot/Image.gz
 KERN_DTB=$KERNEL_DIR/out/arch/arm64/boot/dts/qcom/trinket.dtb
 BUILD_START=$(date +"%s")
 BASE_VER="Inception"
-KERNEL_VER=2t4
+KERNEL_VER=v4n2
 ANYKERNEL_DIR=/home/ubuntu/anykernel
 EXPORT_DIR=/home/ubuntu/zips
 file=$PWD/b.sh
@@ -37,9 +37,8 @@ export ARCH=arm64
 export SUBARCH=arm64
 export KBUILD_BUILD_USER="Nikish21"
 export KBUILD_BUILD_HOST="ndpc"
-export CROSS_COMPILE=/home/ubuntu/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-export KBUILD_COMPILER_STRING=$(/home/ubuntu/proton-clang/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g' -e 's/[[:space:]]*$//')
-
+export CC=/home/ubuntu/proton-clang/bin/clang
+export CROSS_COMPILE=/home/ubuntu/proton-clang/bin/aarch64-linux-gnu-
 #COMPILATION SCRIPTS
 echo -e "${green}"
 echo "--------------------------------------------------------"
@@ -53,7 +52,8 @@ echo -e "***********************************************$nocol"
 mkdir -p out
 
 
-
+make O=out clean
+make O=out mrproper
 
 echo -e "$cyan***********************************************"
 echo "          Initialising DEFCONFIG        "
@@ -66,8 +66,8 @@ echo "          Providing The Inception        "
 echo -e "***********************************************$nocol"
 
 make -j$(nproc --all) O=out ARCH=arm64 \
-			CC="/home/ubuntu/clang/proton-clang/clang" \
-			CLANG_TRIPLE="aarch64-linux-gnu-"
+                CC=$CC \
+                CROSS_COMPILE=$CROSS_COMPILE \
 
 
 
