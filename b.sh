@@ -51,10 +51,6 @@ echo -e "***********************************************$nocol"
 
 mkdir -p out
 
-
-make O=out clean
-make O=out mrproper
-
 echo -e "$cyan***********************************************"
 echo "          Initialising DEFCONFIG        "
 echo -e "***********************************************$nocol"
@@ -95,6 +91,11 @@ echo -e "$green***********************************************"
 echo "          Making Flashable Zip        "
 echo -e "***********************************************$nocol"
 
+if ! [ -a $Image.gz ];
+then
+echo -e "$Red Kernel Compilation failed! Fix the errors! $nocol"
+exit 1
+fi
 cd $ANYKERNEL_DIR
 
 zip -r9 $FINAL_ZIP *
