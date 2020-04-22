@@ -11,9 +11,9 @@ KERN_IMG=$KERNEL_DIR/out/arch/arm64/boot/Image.gz
 KERN_DTB=$KERNEL_DIR/out/arch/arm64/boot/dts/qcom/trinket.dtb
 BUILD_START=$(date +"%s")
 BASE_VER="Inception"
-KERNEL_VER=v4n2
+KERNEL_VER=v4n3
 ANYKERNEL_DIR=/home/ubuntu/anykernel
-EXPORT_DIR=/home/ubuntu/zips
+EXPORT_DIR=/home/ubuntu/zip
 file=$PWD/b.sh
 FINAL_ZIP=$BASE_VER-v$KERNEL_VER.zip
 
@@ -91,12 +91,6 @@ echo -e "$green***********************************************"
 echo "          Making Flashable Zip        "
 echo -e "***********************************************$nocol"
 
-if ! [ -a $Image.gz ];
-then
-echo -e "$Red Kernel Compilation failed! Fix the errors! $nocol"
-exit 1
-fi
-cd $ANYKERNEL_DIR
 
 zip -r9 $FINAL_ZIP *
 
