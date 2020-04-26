@@ -12,8 +12,8 @@ KERN_DTB=$KERNEL_DIR/out/arch/arm64/boot/dts/qcom/trinket.dtb
 BUILD_START=$(date +"%s")
 BASE_VER="Inception"
 KERNEL_VER=v4n3
-ANYKERNEL_DIR=/home/ubuntu/anykernel
-EXPORT_DIR=/home/ubuntu/zip
+ANYKERNEL_DIR=/home/dasnikish2109/anykernel
+EXPORT_DIR=/home/dasnikish2109/zip
 file=$PWD/b.sh
 FINAL_ZIP=$BASE_VER-v$KERNEL_VER.zip
 
@@ -37,8 +37,8 @@ export ARCH=arm64
 export SUBARCH=arm64
 export KBUILD_BUILD_USER="Nikish21"
 export KBUILD_BUILD_HOST="ndpc"
-export CC=/home/ubuntu/proton-clang/bin/clang
-export CROSS_COMPILE=/home/ubuntu/proton-clang/bin/aarch64-linux-gnu-
+export CC=/home/dasnikish2109/proton-clang/bin/clang
+export CROSS_COMPILE=/home/dasnikish2109/proton-clang/bin/aarch64-linux-gnu-
 #COMPILATION SCRIPTS
 echo -e "${green}"
 echo "--------------------------------------------------------"
@@ -91,14 +91,12 @@ echo -e "$green***********************************************"
 echo "          Making Flashable Zip        "
 echo -e "***********************************************$nocol"
 
-
-zip -r9 $FINAL_ZIP *
-
+cd
+cd anykernel
 echo -e "$green***********************************************"
 echo "          Copying Final ZIP to flashable files folder        "
 echo -e "***********************************************$nocol"
 
-mv $FINAL_ZIP $EXPORT_DIR
 
 
 
