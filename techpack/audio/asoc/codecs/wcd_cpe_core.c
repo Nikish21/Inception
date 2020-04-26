@@ -60,7 +60,7 @@
 	mutex_unlock(lock);			\
 }
 
-#define WCD_CPE_STATE_MAX_LEN 11
+#define WCD_CPE_STATE_MAX_LEN 13
 #define CPE_OFFLINE_WAIT_TIMEOUT (2 * HZ)
 #define CPE_READY_WAIT_TIMEOUT (3 * HZ)
 #define WCD_CPE_SYSFS_DIR_MAX_LENGTH 32
@@ -2256,6 +2256,9 @@ static int fill_cmi_header(struct cmi_hdr *hdr,
 		pr_err("Invalid header creation request\n");
 		return -EINVAL;
 	}
+
+	// Explicitly initialize hdr
+	memset(hdr, 0, sizeof(struct cmi_hdr));
 
 	CMI_HDR_SET_SESSION(hdr, session_id);
 	CMI_HDR_SET_SERVICE(hdr, service_id);

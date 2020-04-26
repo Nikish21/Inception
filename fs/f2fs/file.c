@@ -2726,7 +2726,7 @@ static int f2fs_ioc_flush_device(struct file *filp, unsigned long arg)
 
 	if (sbi->s_ndevs <= 1 || sbi->s_ndevs - 1 <= range.dev_num ||
 			__is_large_section(sbi)) {
-		f2fs_msg(sbi->sb, KERN_WARNING,
+		f2fs_err(sbi,
 			"Can't flush %u in %d for segs_per_sec %u != 1\n",
 				range.dev_num, sbi->s_ndevs,
 				sbi->segs_per_sec);
