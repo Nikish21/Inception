@@ -20,9 +20,6 @@
 #include <net/genetlink.h>
 #include <net/sock.h>
 #include <net/gro_cells.h>
-#include <linux/phy.h>
-
-#include <uapi/linux/if_macsec.h>
 
 #define MACSEC_SCI_LEN 8
 
@@ -934,11 +931,15 @@ static enum rx_handler_result handle_not_macsec(struct sk_buff *skb)
 		 * SecTAG, so we have to deduce which port to deliver to.
 		 */
 		if (macsec_get_ops(macsec, NULL) && netif_running(ndev)) {
+			if (hdr->h_proto == htons(ETH_P_PAE))
+				continue;
+
 			if (ndev->flags & IFF_PROMISC) {
 				nskb = skb_clone(skb, GFP_ATOMIC);
 				if (!nskb)
 					break;
 
+				count_rx(ndev, nskb->len);
 				nskb->dev = ndev;
 				netif_rx(nskb);
 			} else if (ether_addr_equal_64bits(hdr->h_dest,
@@ -946,6 +947,7 @@ static enum rx_handler_result handle_not_macsec(struct sk_buff *skb)
 				/* HW offload enabled, divert skb */
 				skb->dev = ndev;
 				skb->pkt_type = PACKET_HOST;
+				count_rx(ndev, skb->len);
 				ret = RX_HANDLER_ANOTHER;
 				goto out;
 			} else if (is_multicast_ether_addr_64bits(hdr->h_dest)) {
@@ -960,6 +962,7 @@ static enum rx_handler_result handle_not_macsec(struct sk_buff *skb)
 				else
 					nskb->pkt_type = PACKET_MULTICAST;
 
+				count_rx(ndev, nskb->len);
 				netif_rx(nskb);
 			}
 			continue;
@@ -3531,13 +3534,13 @@ static int macsec_newlink(struct net *net, struct net_device *dev,
 			  struct netlink_ext_ack *extack)
 {
 	struct macsec_dev *macsec = macsec_priv(dev);
+	rx_handler_func_t *rx_handler;
+	u8 icv_len = DEFAULT_ICV_LEN;
 	struct net_device *real_dev;
 	struct macsec_context ctx;
 	const struct macsec_ops *ops;
-	int err;
+	int err, mtu;
 	sci_t sci;
-	u8 icv_len = DEFAULT_ICV_LEN;
-	rx_handler_func_t *rx_handler;
 
 	if (!tb[IFLA_LINK])
 		return -EINVAL;
@@ -3553,7 +3556,11 @@ static int macsec_newlink(struct net *net, struct net_device *dev,
 
 	if (data && data[IFLA_MACSEC_ICV_LEN])
 		icv_len = nla_get_u8(data[IFLA_MACSEC_ICV_LEN]);
-	dev->mtu = real_dev->mtu - icv_len - macsec_extra_len(true);
+	mtu = real_dev->mtu - icv_len - macsec_extra_len(true);
+	if (mtu < 0)
+		dev->mtu = 0;
+	else
+		dev->mtu = mtu;
 
 	rx_handler = rtnl_dereference(real_dev->rx_handler);
 	if (rx_handler && rx_handler != macsec_handle_frame)
