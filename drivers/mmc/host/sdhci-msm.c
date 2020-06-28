@@ -3,6 +3,7 @@
  * driver source file
  *
  * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2019 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -4706,47 +4707,44 @@ static bool sdhci_msm_is_bootdevice(struct device *dev)
 	 */
 	return true;
 }
-/* add sdcard slot info for factory mode
- *    begin
- *    */
+
 static struct kobject *card_slot_device = NULL;
-static struct sdhci_host *card_host =NULL;
+static struct sdhci_host *card_host = NULL;
 static ssize_t card_slot_status_show(struct device *dev,
-					       struct device_attribute *attr, char *buf)
+				     struct device_attribute *attr, char *buf)
 {
 	return snprintf(buf, PAGE_SIZE, "%d\n", mmc_gpio_get_cd(card_host->mmc));
 }
 
-static DEVICE_ATTR(card_slot_status, S_IRUGO ,
-						card_slot_status_show, NULL);
+static DEVICE_ATTR(card_slot_status, S_IRUGO, card_slot_status_show, NULL);
 
 int32_t card_slot_init_device_name(void)
 {
 	int32_t error = 0;
-//	pr_err("lilin-2\n");
-	if(card_slot_device != NULL){
+
+	if (card_slot_device != NULL) {
 		pr_err("card_slot already created\n");
 		return 0;
 	}
+
 	card_slot_device = kobject_create_and_add("card_slot", NULL);
 	if (card_slot_device == NULL) {
-		//pr_err("lilin-3,%d\n");
-		printk("%s: card_slot register failed\n", __func__);
+		pr_err("%s: card_slot register failed\n", __func__);
 		error = -ENOMEM;
-		return error ;
+		return error;
 	}
-	error = sysfs_create_file(card_slot_device, &dev_attr_card_slot_status.attr);
+
+	error = sysfs_create_file(card_slot_device,
+				  &dev_attr_card_slot_status.attr);
 	if (error) {
-		//pr_err("lilin-4 %d\n",error);
-		printk("%s: card_slot card_slot_status_create_file failed\n", __func__);
+		pr_err("%s: card_slot card_slot_status_create_file failed\n",
+		       __func__);
 		kobject_del(card_slot_device);
 	}
-	// pr_err("lilin-5\n");	
-	return 0 ;
+
+	return 0;
 }
-/* add sdcard slot info for factory mode
- *    end
- *    */
+
 static int sdhci_msm_probe(struct platform_device *pdev)
 {
 	const struct sdhci_msm_offset *msm_host_offset;
@@ -5072,7 +5070,6 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	host->quirks |= SDHCI_QUIRK_SINGLE_POWER_WRITE;
 	host->quirks |= SDHCI_QUIRK_CAP_CLOCK_BASE_BROKEN;
 	host->quirks |= SDHCI_QUIRK_NO_ENDATTR_IN_NOPDESC;
-	host->quirks |= SDHCI_QUIRK_MULTIBLOCK_READ_ACMD12;
 	host->quirks2 |= SDHCI_QUIRK2_ALWAYS_USE_BASE_CLOCK;
 	host->quirks2 |= SDHCI_QUIRK2_IGNORE_DATATOUT_FOR_R1BCMD;
 	host->quirks2 |= SDHCI_QUIRK2_BROKEN_PRESET_VALUE;
@@ -5267,8 +5264,7 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 		ret = device_create_file(&pdev->dev, &msm_host->polling);
 		if (ret)
 			goto remove_max_bus_bw_file;
-	}else{
-	//	pr_err("lilin-1\n");
+	} else {
 		card_host = dev_get_drvdata(&pdev->dev);
 		card_slot_init_device_name();
 	}
